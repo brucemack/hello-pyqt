@@ -59,34 +59,33 @@ class Waterfall:
         self.y = y
         self.w = w
         self.h = h
-    
-    def add_line(self, data):
+        
+    def add_line(self, qp, data):
         # First convert the data to a scaled data using interpolation
         scaled_data = rescale(data, self.w)
-        # Render
         # Shift up existing content by one pixel
         self.pixmap.scroll(0, -1, self.x, self.y, self.w, self.h)
-        qp = QtGui.QPainter(self.pixmap)
-        # Draw new line
+        # Draw new line at the bottom of the view
         for i in range(0, self.w):
-            if i < len(scaled_data):
-                pen = QPen(make_color_from_intensity(scaled_data[i]), 1, Qt.SolidLine)
-                qp.setPen(pen)
-                # We are drawing on the bottom row
-                qp.drawPoint(i, self.h - 1)           
-        qp.end()
+            pen = QPen(make_color_from_intensity(scaled_data[i]), 1, Qt.SolidLine)
+            qp.setPen(pen)
+            qp.drawPoint(i, self.h - 1)           
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.w = 320
+        self.h = 240
+        self.f_mhz = 0
+
         self.label = QtWidgets.QLabel()
-        canvas = QtGui.QPixmap(320, 240)
+        canvas = QtGui.QPixmap(self.w, self.h)
         canvas.fill(Qt.black)
         self.label.setPixmap(canvas)
         self.setCentralWidget(self.label)
-        self.waterfall = Waterfall(self.label.pixmap(), 0, 0, 320, 200)
-        
+        self.waterfall = Waterfall(self.label.pixmap(), 0, 0, self.w, self.h - 50)
+
         # creating a timer object
         timer = QTimer(self)
  
@@ -94,26 +93,51 @@ class MainWindow(QtWidgets.QMainWindow):
         timer.timeout.connect(self.tick)
  
         # update the timer every second
-        timer.start(100)
+        timer.start(250)
  
-        self.h = 8.0
-        self.dh = 0.0
+    def draw_legend(self, qp):
+
+        qp.fillRect(0, self.h - 50, self.w, 50, Qt.black)
+
+        # Setup the border/legend at the bottom
+        pen = QPen(Qt.white, 1, Qt.SolidLine)
+        qp.setPen(pen)
+        # Horizontal line       
+        qp.drawLine(0, self.h - 50, self.w, self.h - 50)
+        # Frequency tick
+        qp.drawLine(int(self.w / 2), self.h - 50, int(self.w / 2), self.h - 40)
+
+        f = qp.font()
+        f.setPixelSize(10)
+        qp.setFont(f)
+        f_khz = int(self.f_mhz / 1000)
+        t = f"{f_khz:,}" 
+        qp.drawText(0, self.h - 35, 100, 10, Qt.AlignLeft, t)
+
 
     def draw_something(self):
-        data = [0] * 50
-        for t in range(0, 50):
-            phi = (float(t) / 50.0) * self.h * 3.14159
+        qp = QtGui.QPainter(self.label.pixmap())
+        data = [0] * 256
+        for t in range(0, 256):
+            phi = (float(t) / 256.0) * 8.0 * 3.14159
             data[t] = (1.5 + math.cos(phi)) / 3.0
-        self.waterfall.add_line(data)
+        self.waterfall.add_line(qp, data)
+        self.draw_legend(qp)
+        qp.end()
         self.update() 
-
-        self.h  = self.h + self.dh
  
     # method called by timer
     def tick(self): 
         self.draw_something()
+        self.f_mhz = self.f_mhz + 1000
+
+    def set_freq(self, f_mhz):
+        self.f_mhz = f_mhz
+
 
 app = QtWidgets.QApplication(sys.argv)
 window = MainWindow()
+window.set_freq(7035000)
+
 window.show()
 app.exec_()
