@@ -3,7 +3,7 @@ import colorsys
 import math
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtCore import Qt, QTimer, QTime
-from PyQt5.QtGui import QPainter, QColor, QFont, QPen
+from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QPolygonF
 
 def make_color_from_intensity(intensity):
     """ The intensity should be from 0.0 to 1.0
@@ -93,7 +93,7 @@ class MainWindow(QtWidgets.QMainWindow):
         timer.timeout.connect(self.tick)
  
         # update the timer every second
-        timer.start(250)
+        #timer.start(1000)
  
     def draw_legend(self, qp):
 
@@ -107,37 +107,58 @@ class MainWindow(QtWidgets.QMainWindow):
         # Frequency tick
         qp.drawLine(int(self.w / 2), self.h - 50, int(self.w / 2), self.h - 40)
 
+        # Cursor
+        cursor_x = 100
+        
+        polygon = QPolygonF() 
+        polygon.append(QtCore.QPointF(cursor_x, self.h - 49))  
+        polygon.append(QtCore.QPointF(cursor_x + 10, self.h - 40))  
+        polygon.append(QtCore.QPointF(cursor_x - 10, self.h - 40))  
+        polygon.append(QtCore.QPointF(cursor_x, self.h - 49))  
+        brush = QtGui.QBrush(Qt.white)
+        qp.setBrush(brush)
+        qp.drawPolygon(polygon)
+        
         f = qp.font()
         f.setPixelSize(10)
         qp.setFont(f)
         f_khz = int(self.f_mhz / 1000)
         t = f"{f_khz:,}" 
         qp.drawText(0, self.h - 35, 100, 10, Qt.AlignLeft, t)
-
-
-    def draw_something(self):
-        qp = QtGui.QPainter(self.label.pixmap())
-        data = [0] * 256
-        for t in range(0, 256):
-            phi = (float(t) / 256.0) * 8.0 * 3.14159
-            data[t] = (1.5 + math.cos(phi)) / 3.0
-        self.waterfall.add_line(qp, data)
-        self.draw_legend(qp)
-        qp.end()
-        self.update() 
  
     # method called by timer
     def tick(self): 
-        self.draw_something()
-        self.f_mhz = self.f_mhz + 1000
+        pass
 
     def set_freq(self, f_mhz):
         self.f_mhz = f_mhz
 
+    def process_line(self, line):
+        if not line.startswith("[WF]"):
+            return
+        tokens = line[4:].split(",")
+        if len(tokens) <= 2:
+            return
+
+        self.set_freq(float(tokens[0]))
+        max_mag = float(tokens[1])
+
+        data = []
+        for i in range(2, len(tokens)):
+            data.append(float(tokens[i]) / max_mag)
+
+        qp = QtGui.QPainter(self.label.pixmap())
+        self.waterfall.add_line(qp, data)
+        self.draw_legend(qp)
+        qp.end()
+        self.update() 
 
 app = QtWidgets.QApplication(sys.argv)
-window = MainWindow()
-window.set_freq(7035000)
 
+window = MainWindow()
 window.show()
+window.process_line("[WF]7000000,1.0,1.0,0.57,0.5,1.0")
+window.process_line("[WF]7000000,1.0,1.0,0.57,0.5,1.0")
+window.process_line("[WF]7000000,1.0,1.0,0.57,0.5,1.0")
+
 app.exec_()
