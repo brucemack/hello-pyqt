@@ -19,9 +19,11 @@ class MainWindow(QtWidgets.QMainWindow):
         painter = QtGui.QPainter(self.label.pixmap())
         pen = QPen(QColor(168, 34, 3), 4, Qt.SolidLine)
         painter.setPen(pen)
-        painter.drawLine(10, 10, 300, 200)
+        painter.drawLine(0, 0, 300, 200)
         painter.end()
 
+        exposed = QtGui.QRegion()
+        self.label.pixmap().scroll(0, 50, 0, 0, 100, 100)
 
 app = QtWidgets.QApplication(sys.argv)
 window = MainWindow()
