@@ -1,7 +1,7 @@
 import sys
 import colorsys
 import math
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt5 import QtCore, QtGui, QtWidgets, uic, QtSerialPort
 from PyQt5.QtCore import Qt, QTimer, QTime
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QPolygonF
 
@@ -94,6 +94,20 @@ class MainWindow(QtWidgets.QMainWindow):
  
         # update the timer every second
         #timer.start(1000)
+
+        # Setup the serial port
+        self.serial = QtSerialPort.QSerialPort(
+            "/dev/ttyACM0",
+            baudRate=QtSerialPort.QSerialPort.Baud115200,
+            readyRead=self.receive
+        )
+
+    def receive(self):
+        while self.serial.canReadLine():
+            text = self.serial.readLine().data().decode()
+            text = text.rstrip('\r\n')
+            print("> ", text)
+            self.process_line(text)
  
     def draw_legend(self, qp):
 
