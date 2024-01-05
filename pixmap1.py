@@ -67,7 +67,7 @@ class Waterfall:
         self.pixmap.scroll(0, -1, self.x, self.y, self.w, self.h)
         # Draw new line at the bottom of the view
         for i in range(0, self.w):
-            pen = QPen(make_color_from_intensity(scaled_data[i]), 1, Qt.SolidLine)
+            pen = QPen(make_color_from_intensity(scaled_data[i]), 4, Qt.SolidLine)
             qp.setPen(pen)
             qp.drawPoint(i, self.h - 1)           
 
@@ -97,16 +97,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Setup the serial port
         self.serial = QtSerialPort.QSerialPort(
-            "/dev/ttyACM0",
+            "COM7",
             baudRate=QtSerialPort.QSerialPort.Baud115200,
             readyRead=self.receive
         )
+        self.serial.open(QtCore.QIODevice.ReadWrite)
 
     def receive(self):
         while self.serial.canReadLine():
             text = self.serial.readLine().data().decode()
             text = text.rstrip('\r\n')
-            print("> ", text)
+            print(text)
             self.process_line(text)
  
     def draw_legend(self, qp):
@@ -122,7 +123,7 @@ class MainWindow(QtWidgets.QMainWindow):
         qp.drawLine(int(self.w / 2), self.h - 50, int(self.w / 2), self.h - 40)
 
         # Cursor
-        cursor_x = 100
+        cursor_x = 225
         
         polygon = QPolygonF() 
         polygon.append(QtCore.QPointF(cursor_x, self.h - 49))  
@@ -134,11 +135,12 @@ class MainWindow(QtWidgets.QMainWindow):
         qp.drawPolygon(polygon)
         
         f = qp.font()
-        f.setPixelSize(10)
+        f.setPixelSize(12)
         qp.setFont(f)
         f_khz = int(self.f_mhz / 1000)
         t = f"{f_khz:,}" 
-        qp.drawText(0, self.h - 35, 100, 10, Qt.AlignLeft, t)
+        qp.drawText(0, self.h - 35, 100, 14, Qt.AlignLeft, t)
+        qp.drawText(0, self.h - 20, 200, 14, Qt.AlignLeft, "CQ CQ DE KC1FSZ KC1FSZ")
  
     # method called by timer
     def tick(self): 
@@ -154,8 +156,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if len(tokens) <= 2:
             return
 
-        self.set_freq(float(tokens[0]))
-        max_mag = float(tokens[1])
+        #self.set_freq(float(tokens[0]))
+        self.set_freq(7035000)
+        #max_mag = float(tokens[1])
+        max_mag = 55
 
         data = []
         for i in range(2, len(tokens)):
@@ -171,8 +175,5 @@ app = QtWidgets.QApplication(sys.argv)
 
 window = MainWindow()
 window.show()
-window.process_line("[WF]7000000,1.0,1.0,0.57,0.5,1.0")
-window.process_line("[WF]7000000,1.0,1.0,0.57,0.5,1.0")
-window.process_line("[WF]7000000,1.0,1.0,0.57,0.5,1.0")
 
 app.exec_()
